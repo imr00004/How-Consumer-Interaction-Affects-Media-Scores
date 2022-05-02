@@ -1,0 +1,339 @@
+---
+title: "How Consumer Interaction Affects Media Scores"
+author: "Izzy Reeser"
+date: "3/30/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(modelr)
+politics <- read_csv("~/Downloads/politics.csv")
+worldnews <- read_csv("~/Downloads/worldnews.csv")
+sports <- read_csv("~/Downloads/sports.csv")
+television <- read_csv("~/Downloads/television.csv")
+```
+
+
+## How does the interaction of consumers on news sources affect their score? 
+
+### Introduction to the Data
+
+We will be looking at the number of comments versus score using 4 different data frames.
+
+```{r}
+head(politics)
+head(worldnews)
+head(sports)
+head(television)
+```
+
+To start, I have graphed the number of comments versus score without manipulating the data. 
+
+Politics:
+
+```{r}
+ggplot(politics, aes(x = `Number of Comments`, y = Score)) +
+  geom_point()
+```
+
+Worldnews:
+
+```{r}
+ggplot(worldnews, aes(x = `Number of Comments`, y = Score)) +
+  geom_point()
+```
+
+Sports:
+
+```{r}
+ggplot(sports, aes(x = `Number of Comments`, y = Score)) +
+  geom_point()
+```
+
+Television:
+
+```{r}
+ggplot(television, aes(x = `Number of Comments`, y = Score)) +
+  geom_point()
+```
+
+From the graphs, we can see the politics and world news have a steeper slope than sports and television. Lets modify the data to see things more clearly.
+
+### Modeling
+
+Political news:
+
+Arrange the data frame so that date and time align better visually:
+
+```{r}
+pol_news <- politics %>%
+  arrange(Date, Time) 
+head(pol_news)
+```
+
+Renaming and taking out unnecessary rows:
+
+```{r}
+pol_news <- pol_news %>% 
+  rename(Comments = `Number of Comments`) %>% 
+  select(-...1)
+head(pol_news)
+```
+
+Create a linear model:
+
+```{r}
+pol.lm <- lm(Score ~ Comments, data = pol_news)
+summary(pol.lm)
+```
+
+Suggests that every comment is associated with an increase of 4.7 in the score and has a very low p-value of 2e-16, which is extremely close to zero. This means that 4.7 is highly significant.
+
+Show it on the plot:
+
+```{r}
+ggplot(pol_news, aes(Comments, Score)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+```
+  
+The plot could be better. The random outliers seem to be an error in the data. If you look at the ones past 6,000 comments, they have a low score. That makes no sense, so lets fix it.
+
+```{r}
+reduced_pol <- pol_news %>% 
+  filter(Comments < 4500)
+
+nrow(reduced_pol)
+```
+ 
+There are 1196 with comments less than 4,500. So, majority. There are only 4 with more than 4,500 comments. So, lets filter them out
+
+```{r}
+ggplot(reduced_pol, aes(Comments, Score)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+```
+
+The Comment and Source look highly skewed. Lets transform both with log to express a percentage change to improve the graph.
+
+```{r, warning=FALSE}
+
+pol.log.lm <- lm(log(Score) ~ log(Comments), data = reduced_pol)
+
+ggplot(reduced_pol, aes(log(Comments), log(Score))) +
+geom_point(alpha = 0.5) +
+geom_smooth(method = "lm")
+```
+
+World News:
+
+Arrange the data frame so that date and time align better visually:
+
+```{r, include=TRUE}
+wrld_news <- worldnews %>%
+  arrange(Date, Time)
+head(wrld_news)
+```
+
+Renaming and taking out unnecessary rows:
+
+```{r}
+wrld_news <- wrld_news %>% 
+  rename(Comments = `Number of Comments`) %>% 
+  select(-...1)
+head(wrld_news)
+```
+
+Create a linear model:
+
+```{r}
+wrld.lm <- lm(Score ~ Comments, data = wrld_news)
+summary(wrld.lm)
+```
+
+Suggests that every comment is associated with an increase of 5.6 in score with a very low p-value of 2e-16. This means that 5.6 is highly significant
+
+Show it on the plot:
+
+```{r}
+ggplot(wrld_news, aes(Comments, Score)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+```
+
+Once again, we have random outliers that could be an error in the data. Lets fix this. 
+
+```{r}
+reduced_wrld <- wrld_news %>% 
+  filter(Comments < 4500)
+
+nrow(reduced_wrld)
+```
+
+This tells us that there are 15 entries with comments greater than 4500. Lets filter them out and apply log to show a percentage change.
+
+```{r, warning=FALSE}
+ggplot(reduced_wrld, aes(log(Comments), log(Score))) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+```
+
+
+Sports:
+
+Arrange the data frame so that date and time align better visually:
+
+```{r}
+sp_news <- sports %>%
+  arrange(Date, Time)
+head(sp_news)
+```
+
+Renaming and taking out unnecessary rows:
+
+```{r}
+sp_news <- sp_news %>% 
+  rename(Comments = `Number of Comments`) %>% 
+  select(-...1)
+head(sp_news)
+```
+
+Create a linear model:
+
+```{r}
+sp.lm <- lm(Score ~ Comments, data = sp_news)
+summary(sp.lm)
+```
+
+Suggests that every comment is associated with an increase of 28.8 in score. This number is a lot higher than our values for politics and worldnews. However, it has the same p-value of 2e-16, making it highly signifcant as well.
+
+Show it on the plot:
+
+```{r}
+ggplot(sp_news, aes(Comments, Score)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+```
+
+Lets fix the random outliers again.
+
+```{r}
+reduced_sp <- sp_news %>% 
+  filter(Comments < 1000)
+
+nrow(reduced_sp)
+```
+
+Sports only has comments greater than 2,000 in value. So in this case, I filtered comments less than 1,000. There are 15 comment values greater than 2,000. Lets filter them out and apply log to show a percentage change.
+
+```{r, warning=FALSE}
+ggplot(reduced_sp, aes(log(Comments), log(Score))) +
+geom_point(alpha = 0.5) +
+geom_smooth(method = "lm")
+```
+
+Television:
+
+Arrange the data frame so that date and time align better visually:
+
+```{r}
+tv_news <- television %>%
+  arrange(Date, Time) 
+head(tv_news)
+```
+
+Renaming and taking out unnecessary rows:
+
+```{r}
+tv_news <- tv_news %>% 
+  rename(Comments = `Number of Comments`) %>% 
+  select(-...1)
+head(tv_news)
+```
+
+Create a linear model:
+
+```{r}
+tv.lm <- lm(Score ~ Comments, data = tv_news)
+summary(tv.lm)
+```
+
+Suggests that every comment is associated with an increase of 11.7 in score. The p-value is 2e-16, which means 11.7 is highly significant.
+
+Show it on the plot:
+
+```{r}
+ggplot(tv_news, aes(Comments, Score)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+```
+
+Lets fix the random outliers again.
+
+```{r}
+reduced_tv <- tv_news %>% 
+  filter(Comments < 2000)
+
+nrow(reduced_tv)
+```
+
+Television comments go greater than 3,000. Their are 13 comment values that are greater than 2,000. Lets filter them out and apply log to show a percentage change
+
+```{r, warning=FALSE}
+ggplot(reduced_tv, aes(log(Comments), log(Score))) +
+geom_point(alpha = 0.5) +
+geom_smooth(method = "lm")
+```
+
+With the information from the graphs, we can determine that greater interaction equals greater score. 
+
+### Does the type of news affect the interaction of consumers and the score?
+
+Combine the Data Frames:
+
+```{r}
+all <- bind_rows(list(politics = politics,worldnews = worldnews,sports = sports,television = television), .id = "types") %>%
+  rename(Comments = 'Number of Comments') %>%
+  select(-...1)
+all
+```
+
+Graphing:
+
+```{r, warning=FALSE}
+ggplot(all, aes(log(Comments), log(Score))) +
+geom_point(alpha = 0.5, aes(color = types)) +
+geom_smooth(method = "lm")
+```
+
+
+```{r, warning=FALSE}
+ggplot(all, aes(log(Comments), log(Score))) +
+geom_point(alpha = 0.5, aes(color = types)) +
+geom_smooth(method = "lm") +
+  facet_wrap(vars(types))
+```
+
+From the graphs, we can conclude that politics and world news have the most consistency of their comments to score ratio than sports and television. I believe this is because people tend to voice their opinion more on political topics (world news can be very political as well), so comments are a bigger factor in score for those two types of news.
+
+### Putting it all Together
+
+Making the Data Frame:
+
+```{r}
+avg <- data.frame(type = c("pol", "wrld", "spts", "tv"), ratio = c(4.7, 5.6, 28.8, 11.7))
+avg
+```
+
+Showing the Data on a Bar Plot:
+
+```{r}
+ggplot(avg, aes(x = type, y = ratio)) +
+  geom_bar(stat = "identity", aes(fill = ratio))
+```
+
+Overall, we can conclude that a smaller comments to score ratio is equivalent to more consistency and more interaction.
